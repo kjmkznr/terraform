@@ -209,6 +209,72 @@ func TestAccAWSS3Bucket_UpdateAcl(t *testing.T) {
 	})
 }
 
+func TestAccAWSS3Bucket_Grant(t *testing.T) {
+	ri := genRandInt()
+	preConfig := fmt.Sprintf(testAccAWSS3BucketConfigWithGrant, ri)
+	postConfig := fmt.Sprintf(testAccAWSS3BucketConfigWithGrantUpdate, ri)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAWSS3BucketDestroy,
+		Steps: []resource.TestStep{
+			resource.TestStep{
+				Config: preConfig,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAWSS3BucketExists("aws_s3_bucket.bucket"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_write.0.emailAddress", "write-user@example.com"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_write.1.id", "write-user"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_write.2.uri", "http://acs.amazonaws.com/groups/global/AllUsers"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_write_acp.0.emailAddress", "write-acp-user@example.com"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_write_acp.1.id", "write-acp-user"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_write_acp.2.uri", "http://acs.amazonaws.com/groups/s3/LogDelivery"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_read.0.emailAddress", "read-user@example.com"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_read.1.id", "readuser"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_read.2.uri", "http://acs.amazonaws.com/groups/global/AuthenticatedUsers"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_read_acp.0.emailAddress", "read-acp-user@example.com"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_read_acp.1.id", "read-acp-user"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_read_acp.2.uri", "http://acs.amazonaws.com/groups/s3/LogDelivery"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_full_control.0.emailAddress", "full-control-user@example.com"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_full_control.1.id", "full-control-user"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_full_control.2.uri", "http://acs.amazonaws.com/groups/s3/LogDelivery"),
+				),
+			},
+			resource.TestStep{
+				Config: postConfig,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAWSS3BucketExists("aws_s3_bucket.bucket"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_write.#", "0"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_write_acp.#", "0"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_read.#", "0"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_read_acp.#", "0"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_full_control.#", "0"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccAWSS3Bucket_Website_Simple(t *testing.T) {
 	rInt := acctest.RandInt()
 	resource.Test(t, resource.TestCase{
@@ -1175,3 +1241,77 @@ resource "aws_s3_bucket" "bucket" {
 }
 `, randInt)
 }
+
+var testAccAWSS3BucketConfigWithGrant = `
+resource "aws_s3_bucket" "bucket" {
+	bucket = "tf-test-bucket-%d"
+	acl = "private"
+
+	grant_write {
+	  emailAddress  = "write-user@example.com"
+	}
+
+	grant_write {
+	  id = "write-user"
+	}
+
+	grant_write {
+	  uri = "http://acs.amazonaws.com/groups/global/AllUsers"
+	}
+
+	grant_write_acp {
+	  emailAddress  = "write-acp-user@example.com"
+	}
+
+	grant_write_acp {
+	  id = "write-acp-user"
+	}
+
+	grant_write_acp {
+	  uri = "http://acs.amazonaws.com/groups/s3/LogDelivery"
+	}
+
+	grant_read {
+	  emailAddress  = "read-user@example.com"
+	}
+
+	grant_read {
+	  id = "readuser"
+	}
+
+	grant_read {
+	  uri = "http://acs.amazonaws.com/groups/global/AuthenticatedUsers"
+	}
+
+	grant_read_acp {
+	  emailAddress  = "read-acp-user@example.com"
+	}
+
+	grant_read_acp {
+	  id = "read-acp-user"
+	}
+
+	grant_read_acp {
+	  uri = "http://acs.amazonaws.com/groups/global/AllUsers"
+	}
+
+	grant_full_control {
+	  emailAddress  = "full-control-user@example.com"
+	}
+
+	grant_full_control {
+	  id = "full-control-user"
+	}
+
+	grant_full_control {
+	  uri = "http://acs.amazonaws.com/groups/s3/LogDelivery"
+	}
+}
+`
+
+var testAccAWSS3BucketConfigWithGrantUpdate = `
+resource "aws_s3_bucket" "bucket" {
+	bucket = "tf-test-bucket-%d"
+	acl = "private"
+}
+`
