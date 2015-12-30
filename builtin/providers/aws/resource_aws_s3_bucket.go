@@ -42,8 +42,14 @@ func resourceAwsS3Bucket() *schema.Resource {
 
 			"acl": &schema.Schema{
 				Type:     schema.TypeString,
-				Default:  "private",
 				Optional: true,
+				ConflictsWith: []string{
+					"grant_full_control",
+					"grant_read",
+					"grant_read_acp",
+					"grant_write",
+					"grant_write_acp",
+				},
 			},
 
 			"grant_full_control": &schema.Schema{

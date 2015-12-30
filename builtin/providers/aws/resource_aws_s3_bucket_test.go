@@ -1249,14 +1249,12 @@ resource "aws_s3_bucket" "bucket" {
 var testAccAWSS3BucketConfigWithGrant = `
 resource "aws_s3_bucket" "bucket" {
 	bucket = "tf-test-bucket-%d"
-	acl = ""
 }
 `
 
 var testAccAWSS3BucketConfigWithGrantUpdate = `
 resource "aws_s3_bucket" "bucket" {
 	bucket = "tf-test-bucket-%d"
-	acl = ""
 
 	grant_write {
 	  uri = "http://acs.amazonaws.com/groups/global/AllUsers"
