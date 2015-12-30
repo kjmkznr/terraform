@@ -224,14 +224,6 @@ func TestAccAWSS3Bucket_Grant(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSS3BucketExists("aws_s3_bucket.bucket"),
 					resource.TestCheckResourceAttr(
-						"aws_s3_bucket.bucket", "grant_write.#", "0"),
-					resource.TestCheckResourceAttr(
-						"aws_s3_bucket.bucket", "grant_write_acp.#", "0"),
-					resource.TestCheckResourceAttr(
-						"aws_s3_bucket.bucket", "grant_read.#", "0"),
-					resource.TestCheckResourceAttr(
-						"aws_s3_bucket.bucket", "grant_read_acp.#", "0"),
-					resource.TestCheckResourceAttr(
 						"aws_s3_bucket.bucket", "grant_full_control.#", "0"),
 				),
 			},

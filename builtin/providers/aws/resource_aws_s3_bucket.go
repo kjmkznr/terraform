@@ -40,6 +40,18 @@ func resourceAwsS3Bucket() *schema.Resource {
 				Computed: true,
 			},
 
+			"owner_id": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+
+			"owner_display_name": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+
 			"acl": &schema.Schema{
 				Type:     schema.TypeString,
 				Optional: true,
@@ -866,17 +878,26 @@ func resourceAwsS3BucketRead(d *schema.ResourceData, meta interface{}) error {
 
 		if err := d.Set("lifecycle_rule", rules); err != nil {
 			return err
+		}
+	}
 
 	// Read the grants configuration
-	if acl := d.Get("acl"); acl == "" {
-		g, err := s3conn.GetBucketAcl(&s3.GetBucketAclInput{
-			Bucket: aws.String(d.Id()),
-		})
-		log.Printf("[DEBUG] S3 Bucket %s, grants: %v", d.Id(), g)
-		var grant_full_control []map[string]interface{}
-		var grant_read, grant_read_acp []map[string]interface{}
-		var grant_write, grant_write_acp []map[string]interface{}
-		if err == nil {
+	g, err := s3conn.GetBucketAcl(&s3.GetBucketAclInput{
+		Bucket: aws.String(d.Id()),
+	})
+
+	if err == nil {
+		if err := d.Set("owner_id", *g.Owner.ID); err != nil {
+			return err
+		}
+		if err := d.Set("owner_display_name", *g.Owner.DisplayName); err != nil {
+			return err
+		}
+		if acl := d.Get("acl"); acl == "" {
+			log.Printf("[DEBUG] S3 Bucket %s, grants: %v", d.Id(), g)
+			var grant_full_control []map[string]interface{}
+			var grant_read, grant_read_acp []map[string]interface{}
+			var grant_write, grant_write_acp []map[string]interface{}
 			for _, v := range g.Grants {
 				grant := make(map[string]interface{})
 				grantee := v.Grantee
@@ -1300,23 +1321,34 @@ func resourceAwsS3BucketAclUpdate(s3conn *s3.S3, d *schema.ResourceData) error {
 
 	i := &s3.PutBucketAclInput{
 		Bucket: aws.String(bucket),
-		ACL:    aws.String(acl),
 	}
 
-	if grant_full_control := d.Get("grant_full_control"); grant_full_control != nil {
-		i.GrantFullControl = aws.String(expandGrant(grant_full_control.([]interface{})))
-	}
-	if grant_read := d.Get("grant_read"); grant_read != nil {
-		i.GrantRead = aws.String(expandGrant(grant_read.([]interface{})))
-	}
-	if grant_read_acp := d.Get("grant_read_acp"); grant_read_acp != nil {
-		i.GrantReadACP = aws.String(expandGrant(grant_read_acp.([]interface{})))
-	}
-	if grant_write := d.Get("grant_write"); grant_write != nil {
-		i.GrantWrite = aws.String(expandGrant(grant_write.([]interface{})))
-	}
-	if grant_write_acp := d.Get("grant_write_acp"); grant_write_acp != nil {
-		i.GrantWriteACP = aws.String(expandGrant(grant_write_acp.([]interface{})))
+	if acl != "" {
+		i.ACL = aws.String(acl)
+	} else {
+		if grant_full_control := d.Get("grant_full_control"); grant_full_control != nil {
+			g, err := s3conn.GetBucketAcl(&s3.GetBucketAclInput{
+				Bucket: aws.String(bucket),
+			})
+			if err != nil {
+				return fmt.Errorf("Error get bucket owner: %s\n", err)
+			}
+			defaultGrant := "id=" + *g.Owner.ID
+			expandedGrantFullControll := expandGrant(grant_full_control.([]interface{}))
+			i.GrantFullControl = aws.String(defaultGrant + "," + expandedGrantFullControll)
+		}
+		if grant_read := d.Get("grant_read"); grant_read != nil {
+			i.GrantRead = aws.String(expandGrant(grant_read.([]interface{})))
+		}
+		if grant_read_acp := d.Get("grant_read_acp"); grant_read_acp != nil {
+			i.GrantReadACP = aws.String(expandGrant(grant_read_acp.([]interface{})))
+		}
+		if grant_write := d.Get("grant_write"); grant_write != nil {
+			i.GrantWrite = aws.String(expandGrant(grant_write.([]interface{})))
+		}
+		if grant_write_acp := d.Get("grant_write_acp"); grant_write_acp != nil {
+			i.GrantWriteACP = aws.String(expandGrant(grant_write_acp.([]interface{})))
+		}
 	}
 
 	log.Printf("[DEBUG] S3 put bucket ACL: %#v", i)
