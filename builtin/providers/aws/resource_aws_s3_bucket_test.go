@@ -224,31 +224,31 @@ func TestAccAWSS3Bucket_Grant(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSS3BucketExists("aws_s3_bucket.bucket"),
 					resource.TestCheckResourceAttr(
-						"aws_s3_bucket.bucket", "grant_write.0.emailAddress", "write-user@example.com"),
+						"aws_s3_bucket.bucket", "grant_write.0.email_address", "write-user@example.com"),
 					resource.TestCheckResourceAttr(
 						"aws_s3_bucket.bucket", "grant_write.1.id", "write-user"),
 					resource.TestCheckResourceAttr(
 						"aws_s3_bucket.bucket", "grant_write.2.uri", "http://acs.amazonaws.com/groups/global/AllUsers"),
 					resource.TestCheckResourceAttr(
-						"aws_s3_bucket.bucket", "grant_write_acp.0.emailAddress", "write-acp-user@example.com"),
+						"aws_s3_bucket.bucket", "grant_write_acp.0.email_address", "write-acp-user@example.com"),
 					resource.TestCheckResourceAttr(
 						"aws_s3_bucket.bucket", "grant_write_acp.1.id", "write-acp-user"),
 					resource.TestCheckResourceAttr(
 						"aws_s3_bucket.bucket", "grant_write_acp.2.uri", "http://acs.amazonaws.com/groups/s3/LogDelivery"),
 					resource.TestCheckResourceAttr(
-						"aws_s3_bucket.bucket", "grant_read.0.emailAddress", "read-user@example.com"),
+						"aws_s3_bucket.bucket", "grant_read.0.email_address", "read-user@example.com"),
 					resource.TestCheckResourceAttr(
 						"aws_s3_bucket.bucket", "grant_read.1.id", "readuser"),
 					resource.TestCheckResourceAttr(
 						"aws_s3_bucket.bucket", "grant_read.2.uri", "http://acs.amazonaws.com/groups/global/AuthenticatedUsers"),
 					resource.TestCheckResourceAttr(
-						"aws_s3_bucket.bucket", "grant_read_acp.0.emailAddress", "read-acp-user@example.com"),
+						"aws_s3_bucket.bucket", "grant_read_acp.0.email_address", "read-acp-user@example.com"),
 					resource.TestCheckResourceAttr(
 						"aws_s3_bucket.bucket", "grant_read_acp.1.id", "read-acp-user"),
 					resource.TestCheckResourceAttr(
 						"aws_s3_bucket.bucket", "grant_read_acp.2.uri", "http://acs.amazonaws.com/groups/s3/LogDelivery"),
 					resource.TestCheckResourceAttr(
-						"aws_s3_bucket.bucket", "grant_full_control.0.emailAddress", "full-control-user@example.com"),
+						"aws_s3_bucket.bucket", "grant_full_control.0.email_address", "full-control-user@example.com"),
 					resource.TestCheckResourceAttr(
 						"aws_s3_bucket.bucket", "grant_full_control.1.id", "full-control-user"),
 					resource.TestCheckResourceAttr(
@@ -1248,7 +1248,7 @@ resource "aws_s3_bucket" "bucket" {
 	acl = "private"
 
 	grant_write {
-	  emailAddress  = "write-user@example.com"
+	  email_address  = "write-user@example.com"
 	}
 
 	grant_write {
@@ -1260,7 +1260,7 @@ resource "aws_s3_bucket" "bucket" {
 	}
 
 	grant_write_acp {
-	  emailAddress  = "write-acp-user@example.com"
+	  email_address  = "write-acp-user@example.com"
 	}
 
 	grant_write_acp {
@@ -1272,7 +1272,7 @@ resource "aws_s3_bucket" "bucket" {
 	}
 
 	grant_read {
-	  emailAddress  = "read-user@example.com"
+	  email_address  = "read-user@example.com"
 	}
 
 	grant_read {
@@ -1284,7 +1284,7 @@ resource "aws_s3_bucket" "bucket" {
 	}
 
 	grant_read_acp {
-	  emailAddress  = "read-acp-user@example.com"
+	  email_address  = "read-acp-user@example.com"
 	}
 
 	grant_read_acp {
@@ -1296,7 +1296,7 @@ resource "aws_s3_bucket" "bucket" {
 	}
 
 	grant_full_control {
-	  emailAddress  = "full-control-user@example.com"
+	  email_address  = "full-control-user@example.com"
 	}
 
 	grant_full_control {
