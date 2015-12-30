@@ -1333,6 +1333,7 @@ func resourceAwsS3BucketAclUpdate(s3conn *s3.S3, d *schema.ResourceData) error {
 			if err != nil {
 				return fmt.Errorf("Error get bucket owner: %s\n", err)
 			}
+			// added by S3 when create bucket automatically
 			defaultGrant := "id=" + *g.Owner.ID
 			expandedGrantFullControll := expandGrant(grant_full_control.([]interface{}))
 			i.GrantFullControl = aws.String(defaultGrant + "," + expandedGrantFullControll)
