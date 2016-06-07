@@ -157,12 +157,31 @@ resource "aws_s3_bucket" "versioning_bucket" {
 }
 ```
 
+### Grant for log dellivery
+
+```
+resource "aws_s3_bucket" "b" {
+  bucket = "my_tf_test_bucket"
+	grant_read_acp {
+		uri = "http://acs.amazonaws.com/groups/s3/LogDelivery"
+	}
+	grant_write {
+		uri = "http://acs.amazonaws.com/groups/s3/LogDelivery"
+	}
+}
+```
+
 ## Argument Reference
 
 The following arguments are supported:
 
 * `bucket` - (Required) The name of the bucket.
 * `acl` - (Optional) The [canned ACL](https://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#canned-acl) to apply. Defaults to "private".
+* `grant_full_control` - (Optional) Can be specified multiple times for each [FULL_CONTROL ACL][1]. The bucket owner has FULL_CONTROL by default. Conflicts with `acl`.
+* `grant_write` - (Optional) Can be specified multiple times for each [WRITE ACL][1]. Conflicts with `acl`.
+* `grant_write_acp` - (Optional) Can be specified multiple times for each [WRITE_ACP ACL][1]. Conflicts with `acl`.
+* `grant_read` - (Optional) Can be specified multiple times for each [READ ACL][1]. Conflicts with `acl`.
+* `grant_read_acp` - (Optional) Can be specified multiple times for each [READ_ACP ACL][1]. Conflicts with `acl`.
 * `policy` - (Optional) A valid [bucket policy](https://docs.aws.amazon.com/AmazonS3/latest/dev/example-bucket-policies.html) JSON document. Note that if the policy document is not specific enough (but still valid), Terraform may view the policy as constantly changing in a `terraform plan`. In this case, please make sure you use the verbose/specific version of the policy.
 
 * `tags` - (Optional) A mapping of tags to assign to the bucket.
@@ -179,6 +198,11 @@ the costs of any data transfer. See [Requester Pays Buckets](http://docs.aws.ama
 developer guide for more information.
 
 ~> **NOTE:** You cannot use `acceleration_status` in `cn-north-1` or `us-gov-west-1`
+
+The grant_full_control, grant_write, grant_write_acp, grant_read, grant_read_acp supports the following:
+
+* `id` - (Optional) Specefies [AWS Account Canonical User ID](http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#finding-canonical-id).
+* `uri` - (Optional) Specifies [predefined group](http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#specifying-grantee-predefined-groups).
 
 The `website` object supports the following:
 
@@ -250,6 +274,7 @@ The following attributes are exported:
 * `website_endpoint` - The website endpoint, if the bucket is configured with a website. If not, this will be an empty string.
 * `website_domain` - The domain of the website endpoint, if the bucket is configured with a website. If not, this will be an empty string. This is used to create Route 53 alias records.
 
+
 ## Import
 
 S3 bucket can be imported using the `bucket`, e.g. 
@@ -257,3 +282,5 @@ S3 bucket can be imported using the `bucket`, e.g.
 ```
 $ terraform import aws_s3_bucket.bucket bucket-name
 ```
+
+[1]: http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#permissions

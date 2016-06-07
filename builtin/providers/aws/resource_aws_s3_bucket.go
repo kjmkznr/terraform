@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -39,10 +40,133 @@ func resourceAwsS3Bucket() *schema.Resource {
 				Computed: true,
 			},
 
+			"owner_id": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+
+			"owner_display_name": &schema.Schema{
+				Type:     schema.TypeString,
+				Optional: true,
+				Computed: true,
+			},
+
 			"acl": &schema.Schema{
 				Type:     schema.TypeString,
-				Default:  "private",
 				Optional: true,
+				ConflictsWith: []string{
+					"grant_full_control",
+					"grant_read",
+					"grant_read_acp",
+					"grant_write",
+					"grant_write_acp",
+				},
+			},
+
+			"grant_full_control": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"id": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"email_address": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"uri": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+
+			"grant_read": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"id": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"email_address": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"uri": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+
+			"grant_read_acp": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"id": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"email_address": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"uri": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+
+			"grant_write": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"id": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"email_address": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"uri": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
+			},
+
+			"grant_write_acp": &schema.Schema{
+				Type:     schema.TypeList,
+				Optional: true,
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"id": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"email_address": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+						"uri": &schema.Schema{
+							Type:     schema.TypeString,
+							Optional: true,
+						},
+					},
+				},
 			},
 
 			"policy": &schema.Schema{
@@ -337,6 +461,22 @@ func resourceAwsS3BucketCreate(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
+	if grant_full_control := d.Get("grant_full_control"); grant_full_control != nil {
+		req.GrantFullControl = aws.String(expandGrant(grant_full_control.([]interface{})))
+	}
+	if grant_read := d.Get("grant_read"); grant_read != nil {
+		req.GrantRead = aws.String(expandGrant(grant_read.([]interface{})))
+	}
+	if grant_read_acp := d.Get("grant_read_acp"); grant_read_acp != nil {
+		req.GrantReadACP = aws.String(expandGrant(grant_read_acp.([]interface{})))
+	}
+	if grant_write := d.Get("grant_write"); grant_write != nil {
+		req.GrantWrite = aws.String(expandGrant(grant_write.([]interface{})))
+	}
+	if grant_write_acp := d.Get("grant_write_acp"); grant_write_acp != nil {
+		req.GrantWriteACP = aws.String(expandGrant(grant_write_acp.([]interface{})))
+	}
+
 	err := resource.Retry(5*time.Minute, func() *resource.RetryError {
 		log.Printf("[DEBUG] Trying to create new S3 bucket: %q", bucket)
 		_, err := s3conn.CreateBucket(req)
@@ -394,7 +534,11 @@ func resourceAwsS3BucketUpdate(d *schema.ResourceData, meta interface{}) error {
 			return err
 		}
 	}
-	if d.HasChange("acl") {
+
+	if d.HasChange("grant_full_control") ||
+		d.HasChange("grant_read") || d.HasChange("grant_read_acp") ||
+		d.HasChange("grant_write") || d.HasChange("grant_write_acp") ||
+		d.HasChange("acl") {
 		if err := resourceAwsS3BucketAclUpdate(s3conn, d); err != nil {
 			return err
 		}
@@ -734,6 +878,74 @@ func resourceAwsS3BucketRead(d *schema.ResourceData, meta interface{}) error {
 
 		if err := d.Set("lifecycle_rule", rules); err != nil {
 			return err
+		}
+	}
+
+	// Read the grants configuration
+	g, err := s3conn.GetBucketAcl(&s3.GetBucketAclInput{
+		Bucket: aws.String(d.Id()),
+	})
+
+	if err == nil {
+		if err := d.Set("owner_id", *g.Owner.ID); err != nil {
+			return err
+		}
+		if err := d.Set("owner_display_name", *g.Owner.DisplayName); err != nil {
+			return err
+		}
+		if acl := d.Get("acl"); acl == "" {
+			log.Printf("[DEBUG] S3 Bucket %s, grants: %v", d.Id(), g)
+			var grant_full_control []map[string]interface{}
+			var grant_read, grant_read_acp []map[string]interface{}
+			var grant_write, grant_write_acp []map[string]interface{}
+			for _, v := range g.Grants {
+				grant := make(map[string]interface{})
+				grantee := v.Grantee
+				permission := *v.Permission
+
+				if permission == s3.PermissionFullControl && grantee.ID != nil && *grantee.ID == *g.Owner.ID {
+					continue
+				}
+
+				if grantee.EmailAddress != nil {
+					grant["email_address"] = *grantee.EmailAddress
+				}
+				if grantee.ID != nil {
+					grant["id"] = *grantee.ID
+				}
+				if grantee.URI != nil {
+					grant["uri"] = *grantee.URI
+				}
+
+				switch permission {
+				case s3.PermissionFullControl:
+					grant_full_control = append(grant_full_control, grant)
+				case s3.PermissionWrite:
+					grant_write = append(grant_write, grant)
+				case s3.PermissionWriteAcp:
+					grant_write_acp = append(grant_write_acp, grant)
+				case s3.PermissionRead:
+					grant_read = append(grant_read, grant)
+				case s3.PermissionReadAcp:
+					grant_read_acp = append(grant_read_acp, grant)
+				}
+			}
+
+			if err := d.Set("grant_full_control", grant_full_control); err != nil {
+				return err
+			}
+			if err := d.Set("grant_write", grant_write); err != nil {
+				return err
+			}
+			if err := d.Set("grant_write_acp", grant_write_acp); err != nil {
+				return err
+			}
+			if err := d.Set("grant_read", grant_read); err != nil {
+				return err
+			}
+			if err := d.Set("grant_read_acp", grant_read_acp); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -1109,8 +1321,37 @@ func resourceAwsS3BucketAclUpdate(s3conn *s3.S3, d *schema.ResourceData) error {
 
 	i := &s3.PutBucketAclInput{
 		Bucket: aws.String(bucket),
-		ACL:    aws.String(acl),
 	}
+
+	if acl != "" {
+		i.ACL = aws.String(acl)
+	} else {
+		if grant_full_control := d.Get("grant_full_control"); grant_full_control != nil {
+			g, err := s3conn.GetBucketAcl(&s3.GetBucketAclInput{
+				Bucket: aws.String(bucket),
+			})
+			if err != nil {
+				return fmt.Errorf("Error get bucket owner: %s\n", err)
+			}
+			// added by S3 when create bucket automatically
+			defaultGrant := "id=" + *g.Owner.ID
+			expandedGrantFullControll := expandGrant(grant_full_control.([]interface{}))
+			i.GrantFullControl = aws.String(defaultGrant + "," + expandedGrantFullControll)
+		}
+		if grant_read := d.Get("grant_read"); grant_read != nil {
+			i.GrantRead = aws.String(expandGrant(grant_read.([]interface{})))
+		}
+		if grant_read_acp := d.Get("grant_read_acp"); grant_read_acp != nil {
+			i.GrantReadACP = aws.String(expandGrant(grant_read_acp.([]interface{})))
+		}
+		if grant_write := d.Get("grant_write"); grant_write != nil {
+			i.GrantWrite = aws.String(expandGrant(grant_write.([]interface{})))
+		}
+		if grant_write_acp := d.Get("grant_write_acp"); grant_write_acp != nil {
+			i.GrantWriteACP = aws.String(expandGrant(grant_write_acp.([]interface{})))
+		}
+	}
+
 	log.Printf("[DEBUG] S3 put bucket ACL: %#v", i)
 
 	_, err := s3conn.PutBucketAcl(i)
@@ -1397,6 +1638,28 @@ func removeNil(data map[string]interface{}) map[string]interface{} {
 	}
 
 	return withoutNil
+}
+
+func expandGrant(configured []interface{}) string {
+	grants := make([]string, 0, len(configured))
+	for _, v := range configured {
+		data := v.(map[string]interface{})
+		if id := data["id"]; id != "" {
+			grants = append(grants, "id="+id.(string))
+		}
+		if emailAddress := data["email_address"]; emailAddress != "" {
+			// You cannot use an email address to specify a grantee in the
+			// EU (Frankfurt), China (Beijing), or AWS GovCloud (US) regions.
+			// Also, using an email address to specify a grantee will not be
+			// supported for any AWS region created after 12/8/2014.
+			// http://docs.aws.amazon.com/AmazonS3/latest/dev/acl-overview.html#specifying-grantee
+			grants = append(grants, "emailAddress="+emailAddress.(string))
+		}
+		if uri := data["uri"]; uri != "" {
+			grants = append(grants, "uri="+uri.(string))
+		}
+	}
+	return strings.Join(grants, ",")
 }
 
 func normalizeJson(jsonString interface{}) string {

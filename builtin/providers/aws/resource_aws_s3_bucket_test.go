@@ -209,6 +209,68 @@ func TestAccAWSS3Bucket_UpdateAcl(t *testing.T) {
 	})
 }
 
+func TestAccAWSS3Bucket_Grant(t *testing.T) {
+	ri := acctest.RandInt()
+	createConfig := fmt.Sprintf(testAccAWSS3BucketConfigWithGrant, ri)
+	updateConfig := fmt.Sprintf(testAccAWSS3BucketConfigWithGrantUpdate, ri)
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAWSS3BucketDestroy,
+		Steps: []resource.TestStep{
+			resource.TestStep{
+				Config: createConfig,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAWSS3BucketExists("aws_s3_bucket.bucket"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_full_control.#", "0"),
+				),
+			},
+			resource.TestStep{
+				Config: updateConfig,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAWSS3BucketExists("aws_s3_bucket.bucket"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_write.0.uri", "http://acs.amazonaws.com/groups/global/AllUsers"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_write_acp.0.uri", "http://acs.amazonaws.com/groups/s3/LogDelivery"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_read.0.uri", "http://acs.amazonaws.com/groups/global/AuthenticatedUsers"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_read_acp.0.uri", "http://acs.amazonaws.com/groups/global/AllUsers"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_full_control.0.uri", "http://acs.amazonaws.com/groups/s3/LogDelivery"),
+				),
+			},
+		},
+	})
+
+	resource.Test(t, resource.TestCase{
+		PreCheck:     func() { testAccPreCheck(t) },
+		Providers:    testAccProviders,
+		CheckDestroy: testAccCheckAWSS3BucketDestroy,
+		Steps: []resource.TestStep{
+			resource.TestStep{
+				Config: updateConfig,
+				Check: resource.ComposeTestCheckFunc(
+					testAccCheckAWSS3BucketExists("aws_s3_bucket.bucket"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_write.0.uri", "http://acs.amazonaws.com/groups/global/AllUsers"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_write_acp.0.uri", "http://acs.amazonaws.com/groups/s3/LogDelivery"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_read.0.uri", "http://acs.amazonaws.com/groups/global/AuthenticatedUsers"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_read_acp.0.uri", "http://acs.amazonaws.com/groups/global/AllUsers"),
+					resource.TestCheckResourceAttr(
+						"aws_s3_bucket.bucket", "grant_full_control.0.uri", "http://acs.amazonaws.com/groups/s3/LogDelivery"),
+				),
+			},
+		},
+	})
+}
+
 func TestAccAWSS3Bucket_Website_Simple(t *testing.T) {
 	rInt := acctest.RandInt()
 	resource.Test(t, resource.TestCase{
@@ -1175,3 +1237,35 @@ resource "aws_s3_bucket" "bucket" {
 }
 `, randInt)
 }
+
+var testAccAWSS3BucketConfigWithGrant = `
+resource "aws_s3_bucket" "bucket" {
+	bucket = "tf-test-bucket-%d"
+}
+`
+
+var testAccAWSS3BucketConfigWithGrantUpdate = `
+resource "aws_s3_bucket" "bucket" {
+	bucket = "tf-test-bucket-%d"
+
+	grant_write {
+	  uri = "http://acs.amazonaws.com/groups/global/AllUsers"
+	}
+
+	grant_write_acp {
+	  uri = "http://acs.amazonaws.com/groups/s3/LogDelivery"
+	}
+
+	grant_read {
+	  uri = "http://acs.amazonaws.com/groups/global/AuthenticatedUsers"
+	}
+
+	grant_read_acp {
+	  uri = "http://acs.amazonaws.com/groups/global/AllUsers"
+	}
+
+	grant_full_control {
+	  uri = "http://acs.amazonaws.com/groups/s3/LogDelivery"
+	}
+}
+`
