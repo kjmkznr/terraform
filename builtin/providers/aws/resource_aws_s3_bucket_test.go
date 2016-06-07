@@ -210,7 +210,7 @@ func TestAccAWSS3Bucket_UpdateAcl(t *testing.T) {
 }
 
 func TestAccAWSS3Bucket_Grant(t *testing.T) {
-	ri := genRandInt()
+	ri := acctest.RandInt()
 	createConfig := fmt.Sprintf(testAccAWSS3BucketConfigWithGrant, ri)
 	updateConfig := fmt.Sprintf(testAccAWSS3BucketConfigWithGrantUpdate, ri)
 
